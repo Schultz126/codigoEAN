@@ -18,7 +18,7 @@ typedef struct {
 } Data;
 
 typedef struct {
-    char nome[MAX];      // Nome do produto
+    char nome[MAX]; // Nome do produto
     double valor;
     Data data;
 } Produto;
@@ -71,6 +71,19 @@ void createMainFile() {
         Código para escrever todas as informações no arquivo principal
         tendo em vista que os produtos devem estar randomizados
     */
+
+    for(int index = 0; index < MAX; index++) {
+        int randomIndex = rand() % MAX;
+        cria_data(2020, &produto.linha.data.dia, &produto.linha.data.mes, &produto.linha.data.ano);
+        fprintf(o, "%02d/%02d/%02d, %s, %s, %6.0f, %6.2f\n", produto.linha.data.dia, 
+            produto.linha.data.mes,
+            produto.linha.data.ano,
+            auxProd[randomIndex].linha.nome,
+            auxProd[randomIndex].codigo_ean,
+            (double) (rand() %999), // Quantidade
+            (float) (rand() %999)   // Valor
+        );
+    }
  
     fclose(i);
     fclose(o);
