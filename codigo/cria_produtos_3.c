@@ -9,7 +9,7 @@
 	#define QUANT 30
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 #define MAX 100
 
@@ -20,6 +20,7 @@ typedef struct {
 typedef struct {
     char nome[MAX]; // Nome do produto
     double valor;
+    int quantidade;
     Data data;
 } Produto;
 
@@ -42,7 +43,7 @@ void createMainFile() {
     FILE *i, *o;
     Vendas produto;
     Vendas auxProd[MAX];
-    char auxLine[MAX];
+    char auxLine[256];
     if(!(i = fopen("C:/Users/rafae/OneDrive/Documentos/2 Ano/Estrutura de Dados/codigoEAN/arquivosTexto/nome_produtos_com_codigoEAN.txt", "r"))) {
         perror("ERRO, abertura nome_produtos_com_codigoEAN.txt");
         return;
@@ -60,10 +61,10 @@ void createMainFile() {
 
     int index = 0;
     // Lê o arquivo auxiliar com nomes associados a códigos
-    while(fgets(auxLine, MAX, i) != NULL) {
+    while(index < MAX && fgets(auxLine, MAX, i) != NULL) {
         sscanf(auxLine, "%[^,],%s", auxProd[index].linha.nome, auxProd[index].codigo_ean);
         #ifdef DEBUG
-        printf("%s, %s\n", &auxProd[index].linha.nome, &auxProd[index].codigo_ean); 
+        printf("%s, %s\n", auxProd[index].linha.nome, auxProd[index].codigo_ean); 
         #endif
         index++;
     }
@@ -75,13 +76,13 @@ void createMainFile() {
     for(int index = 0; index < MAX; index++) {
         int randomIndex = rand() % MAX;
         cria_data(2020, &produto.linha.data.dia, &produto.linha.data.mes, &produto.linha.data.ano);
-        fprintf(o, "%02d/%02d/%02d, %s, %s, %6.0f, %6.2f\n", produto.linha.data.dia, 
+        fprintf(o, "%02d/%02d/%02d %s, %s %d %.2f\n", produto.linha.data.dia, 
             produto.linha.data.mes,
             produto.linha.data.ano,
             auxProd[randomIndex].linha.nome,
             auxProd[randomIndex].codigo_ean,
-            (double) (rand() %999), // Quantidade
-            (float) (rand() %999)   // Valor
+            rand() % 999, // Quantidade (int)
+            (double)(rand() % 10000) / 100.0 // Valor (double, 0.00 to 99.99)
         );
     }
  
@@ -89,7 +90,49 @@ void createMainFile() {
     fclose(o);
 }
 
+void createProduct(Vendas *produto) {
+    FILE *i;
+    char auxLine[MAX];
+    if(!(i = fopen("C:/Users/rafae/OneDrive/Documentos/2 Ano/Estrutura de Dados/codigoEAN/arquivosTexto/info_produtos.txt", "r"))) {
+        perror("ERRO, abertura de info_produtos.txt para leitura");
+        return;
+    }
+
+    int index = 0;
+    while(index < MAX && fgets(auxLine, 256, i) != NULL) {
+        sscanf(auxLine, "%2d/%2d/%4d %[^,], %s %d %lf",
+            &produto[index].linha.data.dia,
+            &produto[index].linha.data.mes,
+            &produto[index].linha.data.ano,
+            produto[index].linha.nome,
+            produto[index].codigo_ean,
+            &produto[index].linha.quantidade,
+            &produto[index].linha.valor);
+
+        index++;
+    }
+    fclose(i);
+}
+
 int main() {
+    Vendas produto[MAX];
+
     createAuxFile();
     createMainFile();
+    createProduct(produto);
+
+    #ifdef DEBUG
+    int index = 0;
+    while(index < MAX) {
+        printf("%02d/%02d/%04d, %s, %s, %d, %.2f\n", produto[index].linha.data.dia,
+            produto[index].linha.data.mes,
+            produto[index].linha.data.ano,
+            produto[index].linha.nome,
+            produto[index].codigo_ean,
+            produto[index].linha.quantidade,
+            produto[index].linha.valor);
+
+            index++;
+    }
+    #endif
 }
