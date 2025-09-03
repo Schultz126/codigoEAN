@@ -10,7 +10,7 @@
 #endif
 
 //#define DEBUG
-//#define MAIN
+#define MAIN
 
 #define MAX 100
 

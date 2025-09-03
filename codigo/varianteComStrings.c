@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <error.h>
-#include "cria_produtos_3.c"
 
 typedef enum { RED, BLACK } Color;
+#define MAX_CHARS 100
 
 typedef struct RBNode {
-    Vendas produto;
+    char name[MAX_CHARS];
     Color color;
     struct RBNode *left, *right, *parent;
 } RBNode;
@@ -21,9 +21,10 @@ void initializeNIL() {
 }
 
 // Cria um novo nó vermelho com filhos NIL
-RBNode* createNode(Vendas newProd) {
+RBNode* createNode(const char *name) {
     RBNode *node = malloc(sizeof(RBNode));
-    node->produto = newProd;
+    strncpy(node->name, name, MAX_CHARS - 1);
+    node->name[MAX_CHARS - 1] = '\0';
     node->color = RED;
     node->left = node->right = node->parent = NIL;
     return node;
@@ -100,12 +101,12 @@ void insertFixup(RBNode **root, RBNode *z) {
     (*root)->color = BLACK;
 }
 
-void rbInsert(RBNode **root, Vendas prod) {
-    RBNode *z = createNode(prod);
+void rbInsert(RBNode **root, const char *name) {
+    RBNode *z = createNode(name);
     RBNode *y = NIL, *x = *root;
     while(x != NIL) {
         y = x;
-        if(strcmp(z->produto.linha.nome, x->produto.linha.nome) < 0)
+        if(strcmp(z->name, x->name) < 0)
             x = x->left;
         else
             x = x->right;
@@ -113,7 +114,7 @@ void rbInsert(RBNode **root, Vendas prod) {
     z->parent = y;
     if (y == NIL)
         *root = z;
-    else if (strcmp(z->produto.linha.nome, y->produto.linha.nome) < 0)
+    else if (strcmp(z->name, y->name) < 0)
         y->left = z;
     else
         y->right = z;
@@ -215,10 +216,9 @@ void rbDelete(RBNode **root, RBNode *z) {
            		y->right->parent = y;
         	}
         	rbTransplant(root, z, y);
-            y->left = z->left;
-            if (y->left != NIL)
-                y->left->parent = y;
-            y->color = z->color;
+        	y->left = z->left;
+        	y->left->parent = y;
+        	y->color = z->color;
     	}
     if( yOriginalColor == BLACK )
         deleteFixup(root, x);
@@ -228,23 +228,9 @@ void rbDelete(RBNode **root, RBNode *z) {
 void inorder(RBNode *root) {
     if (root != NIL) {
         inorder(root->left);
-        printf("%s(%s) ", root->produto.linha.nome, root->color == RED ? "R" : "B");
+        printf("%s(%s) ", root->name, root->color == RED ? "R" : "B");
         inorder(root->right);
     }
-}
-
-RBNode* searchRb(RBNode *root, Vendas *produtoProcurado) {
-    RBNode *cursor = root;
-    while(cursor != NIL){
-        if(strcmp(cursor->produto.linha.nome, produtoProcurado->linha.nome) == 0) {
-            return cursor;
-        } else if(strcmp(cursor->produto.linha.nome, produtoProcurado->linha.nome) > 0) {
-            cursor = cursor->left;
-        } else {
-            cursor = cursor->right;
-        }
-    }
-    return NULL;
 }
 
 // ============================================
@@ -258,7 +244,7 @@ void printTree(RBNode *r, int level) {
     for (int i = 0; i < level; i++) {
         printf("\t");
     }
-    printf("%s(%s)\n", r->produto.linha.nome, r->color == RED ? "R" : "B");
+    printf("%s(%s)\n", r->name, r->color == RED ? "R" : "B");
     // Imprime subarvore esquerda
     printTree(r->left, level+1);
 }
@@ -266,26 +252,25 @@ void printTree(RBNode *r, int level) {
 int main() {
     initializeNIL();
     RBNode *root = NIL;
-    Vendas produtos[256];
-    
-    createAllProducts(produtos);
-    int n = 10;
+
+    const char *keys[] = {"Joao","Ana","Arthur","Rebeca","Tadeu","Rafael","Gabriel"};
+    int n = sizeof(keys)/sizeof(keys[0]);
     for (int i = 0; i < n; i++)
-        rbInsert(&root, produtos[i]);
+        rbInsert(&root, keys[i]);
 
     printf("Arvore apos insercoes (in-order):\n");
     inorder(root);
     printf("\n\n");
 	printTree(root, 1);
     // Remove alguns nos
-    const Vendas toDelete[] = {produtos[1], produtos[0], produtos[4] };
+    const char *toDelete[] = {"Tadeu", "Arthur", "Gabriel" };
     int m = sizeof(toDelete)/sizeof(toDelete[0]);
     for (int i = 0; i < m; i++) {
         printf("Removendo %s...\n", toDelete[i]);
         // Buscar nó com chave toDelete[i]
         RBNode *z = root;
-        while (z != NIL && strcmp(z->produto.linha.nome, toDelete[i].linha.nome) != 0) {
-            z = (strcmp(toDelete[i].linha.nome, z->produto.linha.nome) < 0) ? z->left : z->right;
+        while (z != NIL && strcmp(z->name, toDelete[i]) != 0) {
+            z = (strcmp(toDelete[i], z->name) < 0) ? z->left : z->right;
         }
         if (z != NIL)
             rbDelete(&root, z);
@@ -293,18 +278,5 @@ int main() {
         printf("\n\n");
     }
 	printTree(root, 1);
-    RBNode* searched[3];
-
-    Vendas toBeSearched[] = {produtos[1], produtos[2], produtos[3]};
-
-    for(int i = 0; i < 3; i++) {
-        searched[i] = searchRb(root, &toBeSearched[i]);
-        if(searched[i] != NULL) {
-            printf("Produto %s encontrado na árvore.\n", searched[i]->produto.linha.nome);
-        } else {
-            printf("Produto %s não encontrado na árvore.\n", toBeSearched[i].linha.nome);
-        }
-    }
     return 0;
 }
-
