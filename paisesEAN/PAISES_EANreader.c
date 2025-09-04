@@ -3,7 +3,7 @@
 #include <errno.h>
 
 #define MAX_CHARACTERS 128
-#define DEBUG
+//#define DEBUG
 
 typedef struct {
     char country[MAX_CHARACTERS];
