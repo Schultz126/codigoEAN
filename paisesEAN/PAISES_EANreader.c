@@ -10,7 +10,7 @@
 #endif
 
 #define MAX_CHARACTERS 128
-#define DEBUG
+//#define DEBUG
 
 typedef struct {
     char country[MAX_CHARACTERS];
@@ -38,7 +38,7 @@ void readerPaisesEAN(Country *destiny) {
     }
     fclose(i);
 }
-
+/*
 int main() {
     Country countries[1024];
     readerPaisesEAN(countries);
@@ -51,4 +51,4 @@ int main() {
         perror("getcwd() error");
         return 1;
     }
-}
+}*/

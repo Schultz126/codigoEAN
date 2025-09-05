@@ -8,9 +8,10 @@
 #include "PAISES_EANreader.c"
 
 #define HASH 37
-#define INSERT_MAX 50
+#define INSERT_MAX 100
 #define ALL_COUNTRIES 534
 #define TABLE_SIZE 50 // constante para facilitar testes, mas somente é usada no código para preencher size de HashTable
+#define FATOR_CARGA 0.80
 int comparacoes = 0;
 
 void red() {
@@ -56,7 +57,7 @@ bool hashInsert(Country *country) {
         return false;
     }
 
-    if (hashTable->loadFactor >= 0.6) {
+    if (hashTable->loadFactor >= FATOR_CARGA) {
         if (!rehash(hashTable)) {
             return false; //falha no rehash
         }
