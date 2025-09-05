@@ -10,9 +10,8 @@
 #define HASH 37
 #define INSERT_MAX 30
 #define ALL_COUNTRIES 534
-#define INITIAL_TABLE_SIZE 50
+#define TABLE_SIZE 50
 //#define DEBUG  
-int TABLE_SIZE = INITIAL_TABLE_SIZE;
 int comparacoes = 0;
 
 void red() {
@@ -31,9 +30,10 @@ typedef struct {
 }HashNode;
 
 typedef struct {
-    HashNode *table[INITIAL_TABLE_SIZE];
+    HashNode **table;
     int numberOfElements;
     float loadFactor;
+    int size;
 }HashTable;
 
 HashTable *hashTable;
@@ -43,11 +43,11 @@ unsigned int hash(int code) {
 }
 
 static inline int hashDuplo(Country* country) {
-    return 1 + (country->EANcode % (TABLE_SIZE - 2));
+    return 1 + (country->EANcode % (hashTable->size - 2));
 }
 
 bool hashInitialize() {
-    for(int i = 0; i < TABLE_SIZE; i++) {
+    for(int i = 0; i < hashTable->size; i++) {
         hashTable->table[i] = NULL;
     }
 }
@@ -63,7 +63,7 @@ bool hashInsert(Country *country) {
         int originalIndex = index;
         int i = 1;
         do {
-            index = (originalIndex + (i*i)) % TABLE_SIZE;
+            index = (originalIndex + (i*i)) % hashTable->size;
             if (hashTable->table[index] == NULL) {
             hashTable->table[index] = (HashNode*)malloc(sizeof(HashNode));
             if (hashTable->table[index] == NULL) {
@@ -72,11 +72,11 @@ bool hashInsert(Country *country) {
             hashTable->table[index]->country = *country;
             hashTable->table[index]->next = NULL;
             hashTable->numberOfElements++;
-            hashTable->loadFactor = ((float)(hashTable->numberOfElements) / (TABLE_SIZE));
+            hashTable->loadFactor = ((float)(hashTable->numberOfElements) / (hashTable->size));
             return true;
             }
             i++;
-        } while (index != originalIndex && i < TABLE_SIZE);
+        } while (index != originalIndex && i < hashTable->size);
         // Tabela cheia
         return false;
     }
@@ -87,7 +87,7 @@ bool hashInsert(Country *country) {
     hashTable->table[index]->country = *country;
     hashTable->table[index]->next = NULL;
     hashTable->numberOfElements++;
-    hashTable->loadFactor = ((float)(hashTable->numberOfElements) / (TABLE_SIZE));
+    hashTable->loadFactor = ((float)(hashTable->numberOfElements) / (hashTable->size));
     return true;
 }
 
@@ -109,7 +109,7 @@ int hashSearch(int EANcode) {
         i++;
         comparacoes++;
         // Função para cálculo do novo index deve ser comum entre inserção e busca
-        index = (originalIndex + (i*i)) % TABLE_SIZE;
+        index = (originalIndex + (i*i)) % hashTable->size;
     }
     return -1;
 }
@@ -122,7 +122,7 @@ bool deleteFromHashTable(HashNode *toDelete) {
     free(toDelete);
     hashTable->table[index] = NULL;
     hashTable->numberOfElements--;
-    hashTable->loadFactor = ((float)hashTable->numberOfElements / TABLE_SIZE);
+    hashTable->loadFactor = ((float)hashTable->numberOfElements / hashTable->size);
     return true;
     
 }
@@ -140,6 +140,33 @@ void printTable() {
     printf("Fim");
 }
 
+// A corrected and complete rehash function would look something like this:
+bool rehash(HashTable *table) {
+    size_t novoTamanho = 2 * table->size;
+    HashNode **novaTabela = calloc(novoTamanho, sizeof(HashNode*)); // Use double pointer
+    if (!novaTabela) {
+        return false;
+    }
+    
+    HashNode **tabelaAntiga = table->table;
+    size_t capacidadeAntiga = table->size;
+    
+    // Update the hash table struct to point to the new table
+    table->table = novaTabela;
+    table->numberOfElements = 0;
+    table->size = novoTamanho;
+
+    // Iterate through the old table and re-insert elements
+    for (size_t i = 0; i < capacidadeAntiga; i++) {
+        if (tabelaAntiga[i] != NULL) {
+            hashInsert(&tabelaAntiga[i]->country); 
+            free(tabelaAntiga[i]); // Free the old node
+        }
+    }
+    free(tabelaAntiga); // Free the old table array
+    return true;
+}
+
 int main() {
     int inseridos = 0, naoInseridos = 0;
     Country countries[ALL_COUNTRIES], toBeInserted[INSERT_MAX];
@@ -152,7 +179,14 @@ int main() {
         perror("Failed to allocate memory for hash table");
         return 1;
     }
+    hashTable->table = (HashNode**)calloc(TABLE_SIZE, sizeof(HashNode*));
+    if (hashTable->table == NULL) {
+        perror("Failed to allocate memory for hash table array");
+        free(hashTable);
+        return 1;
+    }
     hashTable->numberOfElements = 0;
+    hashTable->size = TABLE_SIZE;
     hashInitialize();
 
     srand(time(NULL));
