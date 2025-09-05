@@ -7,9 +7,9 @@
 #include <math.h>
 #include "PAISES_EANreader.c"
 
-#define HASH 101
-#define TABLE_SIZE 128
-#define INSERT_MAX 100
+#define HASH 37
+#define TABLE_SIZE 50
+#define INSERT_MAX 25
 #define ALL_COUNTRIES 534
 #define DEBUG  
 
@@ -84,7 +84,7 @@ bool hashInsert(Country *country) {
     return true;
 }
 
-HashNode *hashSearch(int EANcode) {
+int hashSearch(int EANcode) {
     int index = hash(EANcode);  
     int originalIndex = index;
     int i = 0;
@@ -92,19 +92,30 @@ HashNode *hashSearch(int EANcode) {
         if (hashTable[index] != NULL) {
             if (hashTable[index]->country.EANcode == EANcode) {
                 comparacoes++;
-                return hashTable[index];
+                return index;
             }
         } else {
             // If we hit a NULL, the item is not in the table
             comparacoes = 0;
-            return NULL;
+            return -1;
         }
         i++;
         comparacoes++;
         // Função para cálculo do novo index deve ser comum entre inserção e busca
         index = (originalIndex + (i*i)) % TABLE_SIZE;
     }
-    return NULL;
+    return -1;
+}
+
+bool deleteFromHashTable(HashNode *toDelete) {
+    int index = hashSearch(toDelete->country.EANcode);
+    if(index < 0) {
+        return false;
+    }
+    free(toDelete);
+    hashTable[index] = NULL;
+    return true;
+    
 }
 
 void printTable() {
@@ -138,7 +149,7 @@ int main() {
                 reset(); 
             } else {
                 red();
-                printf("Código: %d, Nome: %s\n Não foi inserido\n",toBeInserted[i].EANcode, toBeInserted[i].country);
+                printf("Código: %d, Nome: %s Não foi inserido\n",toBeInserted[i].EANcode, toBeInserted[i].country);
                 naoInseridos++;
                 reset();
             }
@@ -147,15 +158,19 @@ int main() {
     
     printTable();
 
-    HashNode *searched = hashSearch(790);
+    int searched = hashSearch(790);
 
-    if(searched == NULL) {
+    if(searched == -1) {
         printf("\nCódigo 790 não encontrado\n");
     } else {
-        printf("\nCódigo: %d, Nome: %s\n",searched->country.EANcode, searched->country.country);
+        printf("\nCódigo: %d, Nome: %s\n",hashTable[searched]->country.EANcode, hashTable[searched]->country.country);
     }
     printf("Comparações feitas durante a busca: %d\n",comparacoes);
     printf("Foram inseridos: %d países e %d ficaram de fora\n", inseridos, naoInseridos);
 
+    printf("Nó deletado: %d %s\n",toBeInserted[10].EANcode, toBeInserted[10].country);
+    int indexToDelete = hashSearch(toBeInserted[10].EANcode);
+    deleteFromHashTable(hashTable[indexToDelete]);
+    printTable();
 }
 
