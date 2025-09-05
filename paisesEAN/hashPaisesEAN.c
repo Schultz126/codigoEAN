@@ -8,17 +8,16 @@
 #include "PAISES_EANreader.c"
 
 #define HASH 37
-#define INSERT_MAX 30
+#define INSERT_MAX 120
 #define ALL_COUNTRIES 534
 #define TABLE_SIZE 50
-//#define DEBUG  
 int comparacoes = 0;
 
 void red() {
     printf("\033[1;31m");
 }
 void green() {
-    printf("\033[1;32m");
+     printf("\033[1;32m");
 }
 void reset() {
     printf("\033[m");
@@ -27,143 +26,147 @@ void reset() {
 typedef struct {
     Country country;
     int *next;
-}HashNode;
+    bool isDeleted; // flag de deleção para facilitar a função de remoção
+} HashNode;
 
 typedef struct {
-    HashNode **table;
+    HashNode **table; // Ponteiro duplo para poder realocar o vetor
     int numberOfElements;
     float loadFactor;
     int size;
-}HashTable;
+} HashTable;
 
 HashTable *hashTable;
 
+bool rehash(HashTable *table);
+
 unsigned int hash(int code) {
     return code % HASH;
-}
-
-static inline int hashDuplo(Country* country) {
-    return 1 + (country->EANcode % (hashTable->size - 2));
 }
 
 bool hashInitialize() {
     for(int i = 0; i < hashTable->size; i++) {
         hashTable->table[i] = NULL;
     }
+    return true;
 }
 
 bool hashInsert(Country *country) {
     if(country == NULL) {
         return false;
     }
-    int index = hash(country->EANcode);  
-    if(hashTable->table[index] != NULL) {
-        
-        // Endereçamento aberto: procura próxima posição livre
-        int originalIndex = index;
-        int i = 1;
-        do {
+
+    if (hashTable->loadFactor >= 0.6) {
+        if (!rehash(hashTable)) {
+            return false; // Rehash failed
+        }
+    }
+
+    int originalIndex = hash(country->EANcode);
+    int index = originalIndex;
+    int i = 0;
+
+    do {
+        if (i > 0) {
             index = (originalIndex + (i*i)) % hashTable->size;
+        }
+
+        // Procura um espaço livre ou um item marcado como deletado
+        if (hashTable->table[index] == NULL || hashTable->table[index]->isDeleted) {
             if (hashTable->table[index] == NULL) {
-            hashTable->table[index] = (HashNode*)malloc(sizeof(HashNode));
-            if (hashTable->table[index] == NULL) {
-                return false;
+                hashTable->table[index] = (HashNode*)malloc(sizeof(HashNode));
+                if (hashTable->table[index] == NULL) {
+                    return false;
+                }
             }
             hashTable->table[index]->country = *country;
-            hashTable->table[index]->next = NULL;
+            hashTable->table[index]->isDeleted = false; // Not deleted anymore
             hashTable->numberOfElements++;
-            hashTable->loadFactor = ((float)(hashTable->numberOfElements) / (hashTable->size));
+            hashTable->loadFactor = ((float)hashTable->numberOfElements / hashTable->size);
             return true;
-            }
-            i++;
-        } while (index != originalIndex && i < hashTable->size);
-        // Tabela cheia
-        return false;
-    }
-    hashTable->table[index] = (HashNode*)malloc(sizeof(HashNode));
-    if (hashTable->table[index] == NULL) {
-        return false;
-    }
-    hashTable->table[index]->country = *country;
-    hashTable->table[index]->next = NULL;
-    hashTable->numberOfElements++;
-    hashTable->loadFactor = ((float)(hashTable->numberOfElements) / (hashTable->size));
-    return true;
+        }
+
+        i++;
+    } while (i < hashTable->size);
+
+    return false; // tabela cheia
 }
 
 int hashSearch(int EANcode) {
-    int index = hash(EANcode);  
-    int originalIndex = index;
+    int originalIndex = hash(EANcode);
+    int index = originalIndex;
     int i = 0;
-    while (i < TABLE_SIZE) {
-        if (hashTable->table[index] != NULL) {
-            if (hashTable->table[index]->country.EANcode == EANcode) {
-                comparacoes++;
-                return index;
-            }
-        } else {
-            // If we hit a NULL, the item is not in the table
-            comparacoes = 0;
-            return -1;
+    comparacoes = 0;
+
+    do {
+        if (i > 0) {
+            index = (originalIndex + (i*i)) % hashTable->size;
         }
-        i++;
+
+        if (hashTable->table[index] == NULL) {
+            return -1; // Not found
+        }
+        
         comparacoes++;
-        // Função para cálculo do novo index deve ser comum entre inserção e busca
-        index = (originalIndex + (i*i)) % hashTable->size;
-    }
-    return -1;
+
+        if (!hashTable->table[index]->isDeleted && hashTable->table[index]->country.EANcode == EANcode) {
+            return index; // Found
+        }
+
+        i++;
+    } while (i < hashTable->size);
+
+    return -1; // Not found after full search
 }
 
-bool deleteFromHashTable(HashNode *toDelete) {
-    int index = hashSearch(toDelete->country.EANcode);
+bool deleteFromHashTable(int EANcode) {
+    int index = hashSearch(EANcode);
     if(index < 0) {
         return false;
     }
-    free(toDelete);
-    hashTable->table[index] = NULL;
+    
+    hashTable->table[index]->isDeleted = true;
     hashTable->numberOfElements--;
     hashTable->loadFactor = ((float)hashTable->numberOfElements / hashTable->size);
     return true;
-    
 }
 
 void printTable() {
     printf("Início\n");
-    for(int i = 0; i < TABLE_SIZE; i++) {
+    for(int i = 0; i < hashTable->size; i++) {
         if(hashTable->table[i] == NULL) {
             printf("---> NULL\n");
+        } else if (hashTable->table[i]->isDeleted) {
+            printf("---> DELETED\n");
         } else {
-            printf("---> Código: %d, Nome: %s\n",hashTable->table[i]->country.EANcode, hashTable->table[i]->country.country);
+            printf("---> Código: %d, Nome: %s\n", hashTable->table[i]->country.EANcode, hashTable->table[i]->country.country);
         }
     }
     printf("Fator de carga: %.3f\n", hashTable->loadFactor);
-    printf("Fim");
+    printf("Fim\n");
 }
 
-// A corrected and complete rehash function would look something like this:
 bool rehash(HashTable *table) {
-    size_t novoTamanho = 2 * table->size;
-    HashNode **novaTabela = calloc(novoTamanho, sizeof(HashNode*)); // Use double pointer
-    if (!novaTabela) {
+    size_t newSize = table->size * 2;
+    HashNode **newTable = (HashNode**)calloc(newSize, sizeof(HashNode*));
+    if (!newTable) {
         return false;
     }
     
-    HashNode **tabelaAntiga = table->table;
-    size_t capacidadeAntiga = table->size;
+    HashNode **oldTable = table->table;
+    size_t oldSize = table->size;
     
-    // Update the hash table struct to point to the new table
-    table->table = novaTabela;
-    table->numberOfElements = 0;
-    table->size = novoTamanho;
+    table->table = newTable;
+    table->size = newSize;
+    table->numberOfElements = 0; // Will be incremented by hashInsert
 
-    // Iterate through the old table and re-insert elements
-    for (size_t i = 0; i < capacidadeAntiga; i++) {
-        if (tabelaAntiga[i] != NULL) {
-            hashInsert(&tabelaAntiga[i]->country); 
-            free(tabelaAntiga[i]); // Free the old node
+    for (size_t i = 0; i < oldSize; i++) {
+        if (oldTable[i] != NULL && !oldTable[i]->isDeleted) {
+            hashInsert(&oldTable[i]->country);
         }
+        free(oldTable[i]);
     }
-    free(tabelaAntiga); // Free the old table array
+    free(oldTable);
     return true;
 }
 
@@ -172,19 +175,19 @@ int main() {
     Country countries[ALL_COUNTRIES], toBeInserted[INSERT_MAX];
     readerPaisesEAN(countries);
 
-    // Allocate memory for the hashTable struct
     hashTable = (HashTable*)malloc(sizeof(HashTable));
     if (hashTable == NULL) {
-        // Handle allocation error
         perror("Failed to allocate memory for hash table");
         return 1;
     }
+
     hashTable->table = (HashNode**)calloc(TABLE_SIZE, sizeof(HashNode*));
     if (hashTable->table == NULL) {
         perror("Failed to allocate memory for hash table array");
         free(hashTable);
         return 1;
     }
+    
     hashTable->numberOfElements = 0;
     hashTable->size = TABLE_SIZE;
     hashInitialize();
@@ -193,15 +196,16 @@ int main() {
     for(int i = 0; i < INSERT_MAX; i++) {
         toBeInserted[i] = countries[rand() % ALL_COUNTRIES];
     }
+
     for(int i = 0; i < INSERT_MAX; i++) {
         if(hashInsert(&toBeInserted[i])) {
             green();
-            printf("Código: %d, Nome: %s Inserido com sucesso\n",toBeInserted[i].EANcode, toBeInserted[i].country);
+            printf("Código: %d, Nome: %s Inserido com sucesso\n", toBeInserted[i].EANcode, toBeInserted[i].country);
             inseridos++;
             reset(); 
         } else {
             red();
-            printf("Código: %d, Nome: %s Não foi inserido\n",toBeInserted[i].EANcode, toBeInserted[i].country);
+            printf("Código: %d, Nome: %s Não foi inserido\n", toBeInserted[i].EANcode, toBeInserted[i].country);
             naoInseridos++;
             reset();
         }
@@ -209,19 +213,50 @@ int main() {
     
     printTable();
 
-    int searched = hashSearch(790);
+    int searchCode = toBeInserted[10].EANcode;
+    int searched = hashSearch(searchCode);
 
     if(searched == -1) {
-        printf("\nCódigo 790 não encontrado\n");
+        printf("\nCódigo %d não encontrado\n", searchCode);
     } else {
-        printf("\nCódigo: %d, Nome: %s\n",hashTable->table[searched]->country.EANcode, hashTable->table[searched]->country.country);
+        printf("\nCódigo: %d, Nome: %s\n", hashTable->table[searched]->country.EANcode, hashTable->table[searched]->country.country);
     }
-    printf("Comparações feitas durante a busca: %d\n",comparacoes);
+    printf("Comparações feitas durante a busca: %d\n", comparacoes);
     printf("Foram inseridos: %d países e %d ficaram de fora\n", inseridos, naoInseridos);
 
-    printf("Nó deletado: %d %s\n",toBeInserted[10].EANcode, toBeInserted[10].country);
-    int indexToDelete = hashSearch(toBeInserted[10].EANcode);
-    deleteFromHashTable(hashTable->table[indexToDelete]);
-    printTable();
-}
+    printf("Nó a ser deletado: %d %s\n", searchCode, hashTable->table[searched]->country.country);
+    if(deleteFromHashTable(searchCode)) {
+        green();
+        printf("Deleção do Código %d bem-sucedida.\n", searchCode);
+        reset();
+    } else {
+        red();
+        printf("Falha na deleção do Código %d.\n", searchCode);
+        reset();
+    }
 
+    printf("\nBuscando o código deletado:\n");
+    searched = hashSearch(searchCode);
+    if(searched == -1) {
+        green();
+        printf("Código %d não encontrado (correto).\n", searchCode);
+        reset();
+    } else {
+        red();
+        printf("Código %d encontrado (INCORRETO).\n", searchCode);
+        reset();
+    }
+
+    printTable();
+    
+    // Proper cleanup at the end of main
+    for(int i = 0; i < hashTable->size; i++) {
+        if(hashTable->table[i] != NULL) {
+            free(hashTable->table[i]);
+        }
+    }
+    free(hashTable->table);
+    free(hashTable);
+    
+    return 0;
+}
