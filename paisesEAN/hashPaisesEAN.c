@@ -8,9 +8,9 @@
 #include "PAISES_EANreader.c"
 
 #define HASH 37
-#define INSERT_MAX 120
+#define INSERT_MAX 50
 #define ALL_COUNTRIES 534
-#define TABLE_SIZE 50
+#define TABLE_SIZE 50 // constante para facilitar testes, mas somente é usada no código para preencher size de HashTable
 int comparacoes = 0;
 
 void red() {
@@ -58,7 +58,7 @@ bool hashInsert(Country *country) {
 
     if (hashTable->loadFactor >= 0.6) {
         if (!rehash(hashTable)) {
-            return false; // Rehash failed
+            return false; //falha no rehash
         }
     }
 
@@ -80,7 +80,7 @@ bool hashInsert(Country *country) {
                 }
             }
             hashTable->table[index]->country = *country;
-            hashTable->table[index]->isDeleted = false; // Not deleted anymore
+            hashTable->table[index]->isDeleted = false; // marca o elemento como ativo
             hashTable->numberOfElements++;
             hashTable->loadFactor = ((float)hashTable->numberOfElements / hashTable->size);
             return true;
@@ -104,19 +104,19 @@ int hashSearch(int EANcode) {
         }
 
         if (hashTable->table[index] == NULL) {
-            return -1; // Not found
+            return -1; // NNão encontrou
         }
         
-        comparacoes++;
+        comparacoes++; // Variável auxiliar, necessaria somente para debug. Calcula quantas operações foram feitas para achar o elemento
 
         if (!hashTable->table[index]->isDeleted && hashTable->table[index]->country.EANcode == EANcode) {
-            return index; // Found
+            return index; // Encontrou
         }
 
         i++;
     } while (i < hashTable->size);
 
-    return -1; // Not found after full search
+    return -1; // Não encontrou após verificar todos os índices possiveis
 }
 
 bool deleteFromHashTable(int EANcode) {
@@ -158,7 +158,7 @@ bool rehash(HashTable *table) {
     
     table->table = newTable;
     table->size = newSize;
-    table->numberOfElements = 0; // Will be incremented by hashInsert
+    table->numberOfElements = 0; // Vai voltar ao valor original após as múltiplas chamadas de hashInsert
 
     for (size_t i = 0; i < oldSize; i++) {
         if (oldTable[i] != NULL && !oldTable[i]->isDeleted) {
@@ -173,7 +173,7 @@ bool rehash(HashTable *table) {
 int main() {
     int inseridos = 0, naoInseridos = 0;
     Country countries[ALL_COUNTRIES], toBeInserted[INSERT_MAX];
-    readerPaisesEAN(countries);
+    readerPaisesEAN(countries); // função de obtenção dos dados, presente no arquivo PAISES_EANreader.c
 
     hashTable = (HashTable*)malloc(sizeof(HashTable));
     if (hashTable == NULL) {
@@ -181,7 +181,7 @@ int main() {
         return 1;
     }
 
-    hashTable->table = (HashNode**)calloc(TABLE_SIZE, sizeof(HashNode*));
+    hashTable->table = (HashNode**)calloc(TABLE_SIZE, sizeof(HashNode*)); 
     if (hashTable->table == NULL) {
         perror("Failed to allocate memory for hash table array");
         free(hashTable);
@@ -194,7 +194,7 @@ int main() {
 
     srand(time(NULL));
     for(int i = 0; i < INSERT_MAX; i++) {
-        toBeInserted[i] = countries[rand() % ALL_COUNTRIES];
+        toBeInserted[i] = countries[rand() % ALL_COUNTRIES]; // adiciona um país aleatório
     }
 
     for(int i = 0; i < INSERT_MAX; i++) {
@@ -225,6 +225,8 @@ int main() {
     printf("Foram inseridos: %d países e %d ficaram de fora\n", inseridos, naoInseridos);
 
     printf("Nó a ser deletado: %d %s\n", searchCode, hashTable->table[searched]->country.country);
+
+    // funções para verificar se a deleção funciona
     if(deleteFromHashTable(searchCode)) {
         green();
         printf("Deleção do Código %d bem-sucedida.\n", searchCode);
@@ -249,7 +251,7 @@ int main() {
 
     printTable();
     
-    // Proper cleanup at the end of main
+    // limpa a memória alocada
     for(int i = 0; i < hashTable->size; i++) {
         if(hashTable->table[i] != NULL) {
             free(hashTable->table[i]);

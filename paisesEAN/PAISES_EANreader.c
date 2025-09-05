@@ -2,8 +2,15 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#define getcwd _getcwd
+#else
+#include <unistd.h>
+#endif
+
 #define MAX_CHARACTERS 128
-//#define DEBUG
+#define DEBUG
 
 typedef struct {
     char country[MAX_CHARACTERS];
@@ -13,9 +20,9 @@ typedef struct {
 
 void readerPaisesEAN(Country *destiny) {
     FILE *i;
-    if(!(i = fopen("C:/Users/rafae/OneDrive/Documentos/2 Ano/Estrutura de Dados/codigoEAN/paisesEAN/PAISES_EAN.txt", "r+"))) {
+    if(!(i = fopen("PAISES_EAN.txt", "r+"))) {
         perror("ERRO, abertura PAISES_EAN.txt");
-        exit(1);
+        return;
     }
     int index = 0;
     char aux[MAX_CHARACTERS];
@@ -31,9 +38,17 @@ void readerPaisesEAN(Country *destiny) {
     }
     fclose(i);
 }
-/*
+
 int main() {
     Country countries[1024];
     readerPaisesEAN(countries);
+
+    char cwd[1024];
+
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current working directory: %s\n", cwd);
+    } else {
+        perror("getcwd() error");
+        return 1;
+    }
 }
-*/
