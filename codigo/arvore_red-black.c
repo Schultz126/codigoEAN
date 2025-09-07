@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <direct.h>
 
 typedef enum { RED, BLACK } Color;
 
@@ -60,18 +61,18 @@ void rightRotate(RBNode **root, RBNode *y) {
 
 void insertFixup(RBNode **root, RBNode *z) {
     while (z->parent->color == RED) {
-        if (z->parent == z->parent->parent->left) {
+        if (z->parent == z->parent->parent->left) { // Checks if z's parent is a left child of its parent
             RBNode *y = z->parent->parent->right;
-            if (y->color == RED) {
+            if (y->color == RED) { // if z's uncle is red
                 z->parent->color = BLACK;
                 y->color = BLACK;
                 z->parent->parent->color = RED;
                 z = z->parent->parent;
-            } else {
-                if (z == z->parent->right) {
+            } else { // if z's uncle is black
+                if (z == z->parent->right) { // checks if z is a right child of its parent
                     z = z->parent;
                     leftRotate(root, z);
-                }
+                } 
                 z->parent->color = BLACK;
                 z->parent->parent->color = RED;
                 rightRotate(root, z->parent->parent);
@@ -127,18 +128,18 @@ RBNode* treeMinimum(RBNode *x) {
 void deleteFixup(RBNode **root, RBNode *x) {
     while(x != *root && x->color == BLACK) {
         if (x == x->parent->left) {
-            RBNode *w = x->parent->right;
-            if (w->color == RED) {
+            RBNode *w = x->parent->right; // x's sibling
+            if (w->color == RED) { // Case 1: RED sibling
                 w->color = BLACK;
                 x->parent->color = RED;
                 leftRotate(root, x->parent);
                 w = x->parent->right;
             }
-            if (w->left->color == BLACK && w->right->color == BLACK) {
-                w->color = RED;
-                x = x->parent;
+            if (w->left->color == BLACK && w->right->color == BLACK) { // Case 2: BLACK sibling
+                w->color = RED; // Simple recoloring. No rotations needed
+                x = x->parent; // New pointer for next iteration of the while loop
             } else {
-                if (w->right->color == BLACK) {
+                if (w->right->color == BLACK) { // x's sibling's left child is RED
                     w->left->color = BLACK;
                     w->color = RED;
                     rightRotate(root, w);
@@ -150,7 +151,7 @@ void deleteFixup(RBNode **root, RBNode *x) {
                 leftRotate(root, x->parent);
                 x = *root;
             }
-        } else {
+        } else { // x is a right child. Everything mirrors the other cases
             RBNode *w = x->parent->left;
             if (w->color == RED) {
                 w->color = BLACK;
@@ -193,14 +194,14 @@ void rbDelete(RBNode **root, RBNode *z) {
     RBNode *y = z;
     Color yOriginalColor = y->color;
     RBNode *x;
-    if (z->left == NIL) {
+    if (z->left == NIL) { // if z has no left child we replace it with its child
         x = z->right;
         rbTransplant(root, z, z->right);
     } else 
-		if (z->right == NIL) {
+		if (z->right == NIL) { // if z has no right child we replace it with its left child
         	x = z->left;
         	rbTransplant(root, z, z->left);
-    	} else {
+    	} else { // z has two children 
         	y = treeMinimum(z->right);
         	yOriginalColor = y->color;
         	x = y->right;
@@ -245,6 +246,20 @@ void printTree(RBNode *r, int level) {
     printTree(r->left, level+1);
 }
 
+RBNode *rbSearch(RBNode* root, int key) {
+    RBNode *cursor = root;
+    while(cursor != NIL) {
+        if(cursor->key == key) {
+            return cursor;
+        } else if(cursor->key > key) {
+            cursor = cursor->left;
+        } else {
+            cursor = cursor->right;
+        }
+    }
+    return NIL;
+}
+
 int main() {
     initializeNIL();
     RBNode *root = NIL;
@@ -274,5 +289,22 @@ int main() {
         printf("\n\n");
     }
 	printTree(root, 1);
+
+    char cwd[1024];
+    if(_getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current working directory: %s\n", cwd);
+    } else {
+        perror("_getcwd() error\n");
+    }
+
+    printf("Searching for number 1, 20 and 30\n");
+    RBNode *searching[3] = {rbSearch(root, 1), rbSearch(root, 20), rbSearch(root, 30)};
+    for(int i = 0; i < 3; i++ ) {
+        if(searching[i] == NIL) {
+            printf("Valor não encontrado\n");
+        } else {
+            printf("Valor %d encontrado\n", searching[i]->key);
+        }
+    }
     return 0;
 }

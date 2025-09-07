@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <error.h>
+#include <time.h>
 #include "cria_produtos_3.c"
 
 typedef enum { RED, BLACK } Color;
@@ -268,6 +269,7 @@ int main() {
     RBNode *root = NIL;
     Vendas produtos[256];
     
+    srand(time(NULL));
     createAllProducts(produtos);
     int n = 10;
     for (int i = 0; i < n; i++)
@@ -295,7 +297,7 @@ int main() {
 	printTree(root, 1);
     RBNode* searched[3];
 
-    Vendas toBeSearched[] = {produtos[1], produtos[2], produtos[3]};
+    Vendas toBeSearched[] = {produtos[0], produtos[2], produtos[3]};
 
     for(int i = 0; i < 3; i++) {
         searched[i] = searchRb(root, &toBeSearched[i]);
